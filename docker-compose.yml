@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-josaa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-josaa}
+      POSTGRES_DB: ${POSTGRES_DB:-josaa}
+    ports:
+      # Host 55432 -> container 5432 (host already runs a Postgres on 5432).
+      # The app still reaches the DB internally at db:5432.
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-josaa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"   # web UI / API
+    environment:
+      # Inside the compose network Postgres is reachable at host "db".
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-josaa}:${POSTGRES_PASSWORD:-josaa}@db:5432/${POSTGRES_DB:-josaa}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      CURRENT_YEAR: ${CURRENT_YEAR:-2025}
+      HEADLESS: ${HEADLESS:-true}
+      REQUEST_DELAY_SECONDS: ${REQUEST_DELAY_SECONDS:-1.0}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - .:/app
+    # Serve the static (GitHub-Pages-equivalent) site from docs/. The crawler and
+    # export still run via `docker compose exec app python -m josaa.cli ...`.
+    command: python -m http.server 8000 --directory docs
+
+volumes:
+  pgdata:

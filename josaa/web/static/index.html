@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JoSAA Branch Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v=5" />
+</head>
+<body>
+  <header class="masthead">
+    <div class="wrap masthead__inner">
+      <div class="brand">
+        <span class="brand__mark">JoSAA</span>
+        <span class="brand__sub">branch predictor</span>
+      </div>
+      <div class="dbpill" id="dbpill" title="Database snapshot">
+        <span class="dbpill__dot"></span>
+        <span id="dbpill-text">connecting…</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="panel">
+      <p class="panel__lead">
+        Enter your rank to see reachable <strong>OPEN</strong> seats across IITs, NITs, IIITs and GFTIs,
+        bucketed by how safe the choice is. Female candidates also see supernumerary seats.
+      </p>
+
+      <form id="form" class="form">
+        <div class="field">
+          <label>Exam</label>
+          <div class="segmented" data-name="exam">
+            <button type="button" class="seg is-active" data-value="jee_adv">JEE Advanced <span>· IITs</span></button>
+            <button type="button" class="seg" data-value="jee_main">JEE Main <span>· NIT / IIIT / GFTI</span></button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field field--rank">
+            <label for="rank">Your rank <span class="hint">(category rank — CRL for OPEN)</span></label>
+            <input id="rank" type="number" min="1" inputmode="numeric" placeholder="e.g. 4250" required />
+          </div>
+
+          <div class="field">
+            <label>Gender</label>
+            <div class="segmented" data-name="gender">
+              <button type="button" class="seg is-active" data-value="male">Male</button>
+              <button type="button" class="seg" data-value="female">Female</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="prefs">Preferences <span class="hint">(used only by the AI refiner)</span></label>
+          <textarea id="prefs" rows="2" placeholder="e.g. prefer CSE / AI / ECE, willing to relocate, South India preferred"></textarea>
+        </div>
+
+        <div class="form__foot">
+          <label class="switch" id="ai-wrap">
+            <input type="checkbox" id="ai" />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span class="switch__label">Refine &amp; explain with Claude <span class="hint" id="ai-hint"></span></span>
+          </label>
+          <button type="submit" class="btn btn--primary" id="submitBtn">Predict</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="results" class="results" hidden>
+      <div class="results__bar">
+        <div class="tally" id="tally"></div>
+        <button type="button" class="btn btn--ghost" id="exportBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+          Export PDF
+        </button>
+      </div>
+
+      <div class="report-head" id="reportHead"></div>
+      <div id="typeFilter" class="chips" hidden></div>
+      <div id="ai-block"></div>
+      <div id="groups"></div>
+    </section>
+
+    <section id="placeholder" class="placeholder">
+      <div class="placeholder__art">◷</div>
+      <p>Your results will appear here.</p>
+    </section>
+  </main>
+
+  <footer class="wrap foot">
+    Data scraped from JoSAA's publicly published opening/closing ranks &amp; seat matrix · for guidance only.
+  </footer>
+
+  <!-- Trends modal -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__card" role="dialog" aria-modal="true">
+      <button class="modal__x" data-close aria-label="Close">&times;</button>
+      <div class="modal__head">
+        <h2 id="m-title"></h2>
+        <p id="m-sub" class="modal__sub"></p>
+      </div>
+      <div id="m-body" class="modal__body"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=5"></script>
+</body>
+</html>
