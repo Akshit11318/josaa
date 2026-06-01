@@ -217,15 +217,20 @@ function applyFilters() {
   if (filters.buckets.size < 3) list = list.filter((c) => filters.buckets.has(c.bucket));
   if (filters.sortKey) {
     const k = filters.sortKey, d = filters.sortDir;
-    list = [...list].sort((a, b) => ((a[k] ?? 0) - (b[k] ?? 0)) * d);
+    list = [...list].sort((a, b) => {
+      const A = a[k], B = b[k];
+      if (typeof A === "string" || typeof B === "string")
+        return String(A ?? "").localeCompare(String(B ?? "")) * d;
+      return ((A ?? 0) - (B ?? 0)) * d;
+    });
   }
   renderGroups(list);
 }
 
-function sortableTh(label, key) {
+function sortableTh(label, key, numeric = true) {
   const active = filters.sortKey === key;
   const arr = active ? (filters.sortDir > 0 ? "↑" : "↓") : "";
-  return `<th class="num sortable" data-key="${key}">${label} <span class="arr">${arr}</span></th>`;
+  return `<th class="${numeric ? "num " : ""}sortable" data-key="${key}">${label} <span class="arr">${arr}</span></th>`;
 }
 
 function renderGroups(candidates) {
@@ -259,7 +264,7 @@ function renderGroups(candidates) {
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th>Bucket</th><th>Institute</th><th>Program</th><th>Gender</th>
+              <th>Bucket</th>${sortableTh("Institute", "institute", false)}<th>Program</th><th>Gender</th>
               ${sortableTh("Year", "year")}<th class="num">Round</th>
               ${sortableTh("Closing", "closing_rank")}${sortableTh("Seats", "seats")}<th>Trend</th><th>Quota</th>
             </tr></thead>
@@ -296,7 +301,7 @@ $("#form").addEventListener("submit", (e) => {
     } else {
       lastCandidates = data.candidates;
       filters.type = "ALL"; filters.search = ""; filters.buckets = new Set(["green", "yellow", "red"]);
-      filters.sortKey = null; filters.sortDir = 1;
+      filters.sortKey = "institute"; filters.sortDir = 1;   // default: alphabetical by institute
       renderTally(data.counts);
       buildTypeFilter(data.candidates);
       buildControls(data.candidates);
