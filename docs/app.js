@@ -380,6 +380,32 @@ $("#prefClear").addEventListener("click", () => {
   prefs = []; savePrefs(); renderPrefs(); syncAddButtons();
 });
 
+/* export the choice order */
+function csvCell(v) {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+$("#prefCsv").addEventListener("click", () => {
+  if (!prefs.length) return;
+  const header = ["Preference", "Institute", "Program", "Gender", "Quota", "Bucket", "ClosingRank"];
+  const rows = prefs.map((p, i) => [i + 1, p.institute.replace(/\s+/g, " ").trim(), p.program,
+    p.gender, p.quota, p.bucket, p.closing]);
+  const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  a.download = "josaa-choice-order.csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$("#prefPdf").addEventListener("click", () => {
+  if (!prefs.length) return;
+  const d = new Date().toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  $("#prefPrintHead").innerHTML = `<h1>My JoSAA Choice Order</h1><div class="q">${prefs.length} choices · generated ${d}</div>`;
+  document.body.classList.add("print-prefs");
+  window.print();
+});
+window.addEventListener("afterprint", () => document.body.classList.remove("print-prefs"));
+
 function renderPrefs() {
   const panel = $("#prefPanel"), list = $("#prefList");
   $("#prefCount").textContent = prefs.length ? `(${prefs.length})` : "";

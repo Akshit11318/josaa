@@ -186,6 +186,7 @@ input[type=number]::-webkit-inner-spin-button { opacity: .35; }
 .prefs__actions { display: flex; align-items: center; gap: 12px; }
 .btn--sm { padding: 6px 12px; font-size: 12.5px; }
 .prefs__empty { color: var(--faint); font-size: 13px; margin: 10px 2px 0; }
+.prefs__printhead { display: none; }
 
 .preflist { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .pref {
@@ -379,7 +380,14 @@ tbody tr td:first-child { position: relative; }
   body { background: #fff; background-image: none; font-size: 11px; }
   .masthead, .panel, .placeholder, .foot, .results__bar,
   .controls, #typeFilter, .addbtn, .pref__drag, .pref__rm, .prefs__actions { display: none !important; }
-  .prefs { box-shadow: none; break-inside: avoid; }
+  .prefs { box-shadow: none; break-inside: avoid; border-left-color: #000; }
+  .pref { break-inside: avoid; }
+  /* "PDF" on the choice list prints only the list */
+  body.print-prefs #results, body.print-prefs #placeholder { display: none !important; }
+  body.print-prefs .prefs__head { display: none !important; }
+  body.print-prefs .prefs__printhead { display: block; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+  .prefs__printhead h1 { font-family: var(--serif); font-size: 20px; margin: 0 0 3px; }
+  .prefs__printhead .q { color: #444; font-size: 12px; }
   .wrap { max-width: none; padding: 0; }
   .results { margin: 0; }
   .report-head { display: block; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 10px; }
