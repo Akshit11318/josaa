@@ -62,6 +62,17 @@
       </form>
     </section>
 
+    <section id="prefPanel" class="prefs" hidden>
+      <div class="prefs__head">
+        <h3 class="prefs__title">My choice order <span id="prefCount" class="prefs__count"></span></h3>
+        <div class="prefs__actions">
+          <span class="hint" id="prefHint">drag the ⠿ handle to reorder</span>
+          <button type="button" id="prefClear" class="btn btn--ghost btn--sm">Clear</button>
+        </div>
+      </div>
+      <ol id="prefList" class="preflist"></ol>
+    </section>
+
     <section id="results" class="results" hidden>
       <div class="results__bar">
         <div class="tally" id="tally"></div>
@@ -105,7 +116,8 @@
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <script src="vendor/sql-wasm.js"></script>
+  <script src="vendor/sortable.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

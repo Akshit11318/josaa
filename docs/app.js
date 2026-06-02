@@ -12,6 +12,12 @@ let DB = null;
 let lastCandidates = [];
 const filters = { type: "ALL", search: "", buckets: new Set(["green", "yellow", "red"]), sortKey: null, sortDir: 1 };
 
+/* preference order (persisted) */
+const prefKeyOf = (o) => `${o.institute}||${o.program}||${o.gender}||${o.quota}`;
+let prefs = (() => { try { return JSON.parse(localStorage.getItem("josaa_prefs") || "[]"); } catch { return []; } })();
+const savePrefs = () => localStorage.setItem("josaa_prefs", JSON.stringify(prefs));
+let prefSortable = null;
+
 // bucket thresholds (mirror josaa/predict/deterministic.py)
 const GREEN_MIN = 1.20, YELLOW_MIN = 1.00, RED_MIN = 0.85;
 
@@ -35,9 +41,7 @@ function rows(sql, params) {
 }
 
 async function initDB() {
-  const SQL = await initSqlJs({
-    locateFile: (f) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${f}`,
-  });
+  const SQL = await initSqlJs({ locateFile: (f) => `vendor/${f}` });
   const buf = await (await fetch("data/josaa.sqlite")).arrayBuffer();
   DB = new SQL.Database(new Uint8Array(buf));
 }
@@ -237,13 +241,15 @@ function renderGroups(candidates) {
   const byType = {};
   candidates.forEach((c) => (byType[c.institute_type] ??= []).push(c));
   const order = TYPE_ORDER.filter((t) => byType[t]).concat(Object.keys(byType).filter((t) => !TYPE_ORDER.includes(t)));
+  const prefSet = new Set(prefs.map(prefKeyOf));
 
   $("#groups").innerHTML = order.map((type) => {
     const rws = byType[type].map((c) => {
       const p = splitProgram(c.program);
       const inst = esc(c.institute.replace(/\s+/g, " ").trim());
-      return `<tr class="crow" data-institute="${esc(c.institute)}" data-program="${esc(c.program)}" data-gender="${esc(c.gender)}" data-quota="${esc(c.quota)}">
-        <td><span class="bucket-tag ${c.bucket}">${c.bucket.toUpperCase()}</span></td>
+      const added = prefSet.has(prefKeyOf(c));
+      return `<tr class="crow" data-institute="${esc(c.institute)}" data-program="${esc(c.program)}" data-gender="${esc(c.gender)}" data-quota="${esc(c.quota)}" data-bucket="${c.bucket}" data-closing="${c.closing_rank}" data-type="${c.institute_type}">
+        <td><button type="button" class="addbtn ${added ? "added" : ""}" data-add title="Add to my choice order">${added ? "✓" : "＋"}</button><span class="bucket-tag ${c.bucket}">${c.bucket.toUpperCase()}</span></td>
         <td class="inst">${inst}</td>
         <td class="prog">${esc(p.main)}${p.degree ? `<small>${esc(p.degree)}</small>` : ""}</td>
         <td class="gender">${esc(genderShort(c.gender))}</td>
@@ -329,9 +335,84 @@ modal.addEventListener("click", (e) => { if ("close" in e.target.dataset) closeM
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
 
 $("#groups").addEventListener("click", (e) => {
+  if (e.target.closest(".addbtn")) return;   // add-to-prefs handled separately
   const tr = e.target.closest("tr.crow");
   if (tr) showTrend(tr.dataset);
 });
+
+/* ---- preference order builder ------------------------------------------ */
+function syncAddButtons() {
+  const set = new Set(prefs.map((p) => p.key));
+  document.querySelectorAll("#groups .addbtn").forEach((btn) => {
+    const d = btn.closest("tr.crow").dataset;
+    const on = set.has(prefKeyOf(d));
+    btn.classList.toggle("added", on);
+    btn.textContent = on ? "✓" : "＋";
+  });
+}
+
+$("#groups").addEventListener("click", (e) => {
+  const btn = e.target.closest(".addbtn");
+  if (!btn) return;
+  const d = btn.closest("tr.crow").dataset;
+  const key = prefKeyOf(d);
+  if (prefs.some((p) => p.key === key)) {
+    prefs = prefs.filter((p) => p.key !== key);
+  } else {
+    prefs.push({ key, institute: d.institute, program: d.program, gender: d.gender,
+      quota: d.quota, bucket: d.bucket, closing: +d.closing, type: d.type });
+  }
+  savePrefs();
+  renderPrefs();
+  syncAddButtons();
+});
+
+$("#prefList").addEventListener("click", (e) => {
+  const rm = e.target.closest(".pref__rm");
+  if (!rm) return;
+  const key = rm.closest(".pref").dataset.key;
+  prefs = prefs.filter((p) => p.key !== key);
+  savePrefs(); renderPrefs(); syncAddButtons();
+});
+
+$("#prefClear").addEventListener("click", () => {
+  if (!prefs.length) return;
+  prefs = []; savePrefs(); renderPrefs(); syncAddButtons();
+});
+
+function renderPrefs() {
+  const panel = $("#prefPanel"), list = $("#prefList");
+  $("#prefCount").textContent = prefs.length ? `(${prefs.length})` : "";
+  if (!prefs.length) {
+    panel.hidden = true; list.innerHTML = "";
+    if (prefSortable) { prefSortable.destroy(); prefSortable = null; }
+    return;
+  }
+  panel.hidden = false;
+  list.innerHTML = prefs.map((p, i) => `
+    <li class="pref" data-key="${esc(p.key)}">
+      <span class="pref__drag" title="drag to reorder">⠿</span>
+      <span class="pref__rank">${i + 1}</span>
+      <div class="pref__body">
+        <div class="pref__title">${esc(p.institute.replace(/\s+/g, " ").trim())}<span class="tag ${p.bucket}">${(p.bucket || "").toUpperCase()}</span></div>
+        <div class="pref__sub">${esc(splitProgram(p.program).main)} · ${esc(genderShort(p.gender))} · <span class="mono">${esc(p.quota)}</span> · close <span class="mono">${(p.closing || 0).toLocaleString()}</span></div>
+      </div>
+      <button type="button" class="pref__rm" data-rm title="Remove">×</button>
+    </li>`).join("");
+
+  if (prefSortable) prefSortable.destroy();
+  if (window.Sortable) {
+    prefSortable = Sortable.create(list, {
+      animation: 150, handle: ".pref__drag", ghostClass: "sortable-ghost", chosenClass: "sortable-chosen",
+      onEnd: () => {
+        const order = [...list.querySelectorAll(".pref")].map((li) => li.dataset.key);
+        prefs.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+        savePrefs();
+        list.querySelectorAll(".pref__rank").forEach((el, i) => (el.textContent = i + 1));
+      },
+    });
+  }
+}
 
 const chartTip = document.createElement("div");
 chartTip.className = "charttip"; chartTip.hidden = true;
@@ -434,6 +515,7 @@ function renderTrend(data) {
 }
 
 /* ---- boot -------------------------------------------------------------- */
+renderPrefs();   // restore any saved choice order immediately
 (async () => {
   try {
     await initDB();
