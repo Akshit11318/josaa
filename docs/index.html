@@ -23,7 +23,13 @@
     </div>
   </header>
 
+  <nav class="tabs wrap">
+    <button type="button" class="tab is-active" data-view="predict">Rank predictor</button>
+    <button type="button" class="tab" data-view="choices">Choice list <span id="tabCount" class="tabbadge" hidden></span></button>
+  </nav>
+
   <main class="wrap">
+    <div id="view-predict" class="view">
     <section class="panel">
       <p class="panel__lead">
         Enter your rank to see reachable <strong>OPEN</strong> seats across IITs, NITs, IIITs and GFTIs,
@@ -62,20 +68,6 @@
       </form>
     </section>
 
-    <section id="prefPanel" class="prefs" hidden>
-      <div class="prefs__head">
-        <h3 class="prefs__title">My choice order <span id="prefCount" class="prefs__count"></span></h3>
-        <div class="prefs__actions">
-          <span class="hint" id="prefHint">drag the ⠿ handle to reorder</span>
-          <button type="button" id="prefCsv" class="btn btn--ghost btn--sm">CSV</button>
-          <button type="button" id="prefPdf" class="btn btn--ghost btn--sm">PDF</button>
-          <button type="button" id="prefClear" class="btn btn--ghost btn--sm">Clear</button>
-        </div>
-      </div>
-      <div class="prefs__printhead" id="prefPrintHead"></div>
-      <ol id="prefList" class="preflist"></ol>
-    </section>
-
     <section id="results" class="results" hidden>
       <div class="results__bar">
         <div class="tally" id="tally"></div>
@@ -100,6 +92,37 @@
       <div class="placeholder__art">◷</div>
       <p>Your results will appear here.</p>
     </section>
+    </div><!-- /view-predict -->
+
+    <div id="view-choices" class="view" hidden>
+      <section class="panel">
+        <p class="panel__lead">
+          Build your JoSAA <strong>preference order</strong> — add any branch (independent of rank),
+          then drag the ⠿ handle up or down to arrange your choices. Export to CSV / PDF when done.
+        </p>
+        <div class="finder">
+          <div id="cFilter" class="chips"></div>
+          <input id="cSearch" class="search" type="search" placeholder="Search institute or branch — e.g. “Bombay computer”…" />
+        </div>
+        <div id="cResults" class="finder-list"></div>
+        <p id="cHint" class="finder-hint">Pick an institute type or start typing, then tap ＋ to add a choice.</p>
+      </section>
+
+      <section id="prefPanel" class="prefs" hidden>
+        <div class="prefs__head">
+          <h3 class="prefs__title">My choice order <span id="prefCount" class="prefs__count"></span></h3>
+          <div class="prefs__actions">
+            <span class="hint" id="prefHint">drag the ⠿ handle to reorder</span>
+            <button type="button" id="prefCsv" class="btn btn--ghost btn--sm">CSV</button>
+            <button type="button" id="prefPdf" class="btn btn--ghost btn--sm">PDF</button>
+            <button type="button" id="prefClear" class="btn btn--ghost btn--sm">Clear</button>
+          </div>
+        </div>
+        <div class="prefs__printhead" id="prefPrintHead"></div>
+        <ol id="prefList" class="preflist"></ol>
+        <p class="prefs__empty" id="prefEmpty">No choices yet — add branches above (or ＋ from the predictor) and drag to order them.</p>
+      </section>
+    </div><!-- /view-choices -->
   </main>
 
   <footer class="wrap foot">

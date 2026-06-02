@@ -146,6 +146,38 @@ input[type=number]::-webkit-inner-spin-button { opacity: .35; }
 .placeholder__art { font-size: 40px; opacity: .5; }
 .placeholder p { margin: 8px 0 0; font-size: 14px; }
 
+/* ---- tabs --------------------------------------------------------------- */
+.tabs { display: flex; gap: 4px; margin: 26px auto 0; border-bottom: 1px solid var(--line); }
+.tab {
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--muted);
+  background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  padding: 10px 16px; cursor: pointer; transition: color .14s, border-color .14s;
+}
+.tab:hover { color: var(--ink); }
+.tab.is-active { color: var(--accent-ink); border-bottom-color: var(--accent); }
+.tabbadge {
+  font-family: var(--mono); font-size: 11px; font-weight: 600; color: #fff; background: var(--accent);
+  border-radius: 999px; padding: 1px 7px; margin-left: 4px;
+}
+.tabbadge[hidden] { display: none; }
+.view[hidden] { display: none; }
+
+/* ---- choice finder ----------------------------------------------------- */
+.finder { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.finder .search { flex: 1 1 320px; max-width: 460px; }
+.finder-list { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 440px; overflow-y: auto; }
+.fitem {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  border: 1px solid var(--line-soft); border-radius: 9px; padding: 9px 12px; background: var(--surface);
+}
+.fitem:hover { border-color: var(--line); background: #fcfbf7; }
+.fitem__type { font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; }
+.fitem__body { min-width: 0; }
+.fitem__inst { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.fitem__prog { font-size: 12px; color: var(--muted); }
+.finder-hint { color: var(--faint); font-size: 13px; margin: 12px 2px 0; }
+
 /* ---- results ----------------------------------------------------------- */
 .results { margin-top: 30px; }
 .results__bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }

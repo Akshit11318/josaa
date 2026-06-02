@@ -372,12 +372,12 @@ $("#prefList").addEventListener("click", (e) => {
   if (!rm) return;
   const key = rm.closest(".pref").dataset.key;
   prefs = prefs.filter((p) => p.key !== key);
-  savePrefs(); renderPrefs(); syncAddButtons();
+  savePrefs(); renderPrefs(); syncAddButtons(); markFinderAdded();
 });
 
 $("#prefClear").addEventListener("click", () => {
   if (!prefs.length) return;
-  prefs = []; savePrefs(); renderPrefs(); syncAddButtons();
+  prefs = []; savePrefs(); renderPrefs(); syncAddButtons(); markFinderAdded();
 });
 
 /* export the choice order */
@@ -406,25 +406,39 @@ $("#prefPdf").addEventListener("click", () => {
 });
 window.addEventListener("afterprint", () => document.body.classList.remove("print-prefs"));
 
+function updateTabBadge() {
+  const b = $("#tabCount");
+  if (!b) return;
+  b.textContent = prefs.length;
+  b.hidden = !prefs.length;
+}
+
 function renderPrefs() {
-  const panel = $("#prefPanel"), list = $("#prefList");
+  const panel = $("#prefPanel"), list = $("#prefList"), empty = $("#prefEmpty");
   $("#prefCount").textContent = prefs.length ? `(${prefs.length})` : "";
+  updateTabBadge();
+  panel.hidden = false;   // panel lives in the Choice-list tab; only visible there
   if (!prefs.length) {
-    panel.hidden = true; list.innerHTML = "";
+    if (empty) empty.hidden = false;
+    list.innerHTML = "";
     if (prefSortable) { prefSortable.destroy(); prefSortable = null; }
     return;
   }
-  panel.hidden = false;
-  list.innerHTML = prefs.map((p, i) => `
+  if (empty) empty.hidden = true;
+  list.innerHTML = prefs.map((p, i) => {
+    const sub = [esc(genderShort(p.gender)), p.quota ? esc(p.quota) : null,
+      p.closing ? `close ${p.closing.toLocaleString()}` : null].filter(Boolean).join(" · ");
+    return `
     <li class="pref" data-key="${esc(p.key)}">
       <span class="pref__drag" title="drag to reorder">⠿</span>
       <span class="pref__rank">${i + 1}</span>
       <div class="pref__body">
-        <div class="pref__title">${esc(p.institute.replace(/\s+/g, " ").trim())}<span class="tag ${p.bucket}">${(p.bucket || "").toUpperCase()}</span></div>
-        <div class="pref__sub">${esc(splitProgram(p.program).main)} · ${esc(genderShort(p.gender))} · <span class="mono">${esc(p.quota)}</span> · close <span class="mono">${(p.closing || 0).toLocaleString()}</span></div>
+        <div class="pref__title">${esc(p.institute.replace(/\s+/g, " ").trim())}${p.bucket ? `<span class="tag ${p.bucket}">${p.bucket.toUpperCase()}</span>` : ""}</div>
+        <div class="pref__sub">${esc(splitProgram(p.program).main)} · ${sub}</div>
       </div>
       <button type="button" class="pref__rm" data-rm title="Remove">×</button>
-    </li>`).join("");
+    </li>`;
+  }).join("");
 
   if (prefSortable) prefSortable.destroy();
   if (window.Sortable) {
@@ -540,7 +554,84 @@ function renderTrend(data) {
     <p class="modal__note">Closing rank — lower is better, so points higher on the chart are stronger cutoffs. Quota: ${esc(data.quota || "—")}.</p>`;
 }
 
+/* ---- tabs --------------------------------------------------------------- */
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x === t));
+  const v = t.dataset.view;
+  $("#view-predict").hidden = v !== "predict";
+  $("#view-choices").hidden = v !== "choices";
+  if (v === "choices") renderPrefs();
+}));
+
+/* ---- choice finder (rank-independent) ---------------------------------- */
+let cType = "ALL", cQuery = "";
+const finderKey = (inst, prog) => `${inst}||${prog}||Gender-Neutral||`;
+
+function buildCFilter() {
+  $("#cFilter").innerHTML = ["ALL", "IIT", "NIT", "IIIT", "GFTI"].map((t) =>
+    `<button class="chip ${cType === t ? "is-active" : ""}" data-ctype="${t}">${t === "ALL" ? "All" : t}</button>`).join("");
+}
+$("#cFilter").addEventListener("click", (e) => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  cType = b.dataset.ctype; buildCFilter(); runFinder();
+});
+$("#cSearch").addEventListener("input", (e) => { cQuery = e.target.value.trim(); runFinder(); });
+
+function runFinder() {
+  if (!DB) return;
+  const out = $("#cResults"), hint = $("#cHint");
+  if (cType === "ALL" && cQuery.length < 2) { out.innerHTML = ""; hint.hidden = false; return; }
+  hint.hidden = true;
+  const where = ["c.gender='Gender-Neutral'"], params = [];
+  if (cType !== "ALL") { where.push("i.type=?"); params.push(cType); }
+  // each typed word must appear in the institute OR program name (token AND)
+  for (const tok of cQuery.split(/\s+/).filter(Boolean)) {
+    where.push("(i.name LIKE ? OR p.name LIKE ?)");
+    params.push(`%${tok}%`, `%${tok}%`);
+  }
+  const list = rows(`SELECT DISTINCT i.name inst, i.type itype, p.name prog
+    FROM cutoffs c JOIN institutes i ON c.institute_id=i.id JOIN programs p ON c.program_id=p.id
+    WHERE ${where.join(" AND ")} ORDER BY i.name, p.name LIMIT 300`, params);
+  const set = new Set(prefs.map((p) => p.key));
+  out.innerHTML = list.length ? list.map((o) => {
+    const added = set.has(finderKey(o.inst, o.prog));
+    return `<div class="fitem" data-inst="${esc(o.inst)}" data-prog="${esc(o.prog)}" data-type="${o.itype}">
+      <span class="fitem__type">${o.itype}</span>
+      <div class="fitem__body">
+        <div class="fitem__inst">${esc(o.inst.replace(/\s+/g, " ").trim())}</div>
+        <div class="fitem__prog">${esc(splitProgram(o.prog).main)}</div>
+      </div>
+      <button type="button" class="addbtn ${added ? "added" : ""}" data-fadd>${added ? "✓" : "＋"}</button>
+    </div>`;
+  }).join("") : `<p class="finder-hint">No matches${cQuery ? ` for “${esc(cQuery)}”` : ""}.</p>`;
+}
+
+function markFinderAdded() {
+  const set = new Set(prefs.map((p) => p.key));
+  document.querySelectorAll("#cResults .fitem").forEach((el) => {
+    const btn = el.querySelector(".addbtn");
+    const on = set.has(finderKey(el.dataset.inst, el.dataset.prog));
+    btn.classList.toggle("added", on); btn.textContent = on ? "✓" : "＋";
+  });
+}
+
+$("#cResults").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-fadd]"); if (!btn) return;
+  const d = btn.closest(".fitem").dataset;
+  const key = finderKey(d.inst, d.prog);
+  if (prefs.some((p) => p.key === key)) {
+    prefs = prefs.filter((p) => p.key !== key);
+  } else {
+    const m = rows(`SELECT closing_rank cl FROM cutoffs c JOIN institutes i ON c.institute_id=i.id JOIN programs p ON c.program_id=p.id
+      WHERE i.name=? AND p.name=? AND c.gender='Gender-Neutral' ORDER BY year DESC, round DESC LIMIT 1`, [d.inst, d.prog]);
+    prefs.push({ key, institute: d.inst, program: d.prog, gender: "Gender-Neutral", quota: "",
+      bucket: "", closing: m.length ? m[0].cl : null, type: d.type });
+  }
+  savePrefs(); renderPrefs(); markFinderAdded();
+});
+
 /* ---- boot -------------------------------------------------------------- */
+buildCFilter();
 renderPrefs();   // restore any saved choice order immediately
 (async () => {
   try {
